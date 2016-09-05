@@ -30,7 +30,6 @@ mcu_regex_to_cflags_dict = {
 }
 
 def main():
-    
     if len(sys.argv) != 2:
         sys.stderr.write("\nSTM32CubeMX project to Makefile V1.9\n")
         sys.stderr.write("-==================================-\n")
@@ -45,11 +44,20 @@ def main():
     # Load template files
     app_folder_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     template_file_path = os.path.join(app_folder_path, 'CubeMX2Makefile.tpl')
+    projtempl_file_path = os.path.join(app_folder_path, 'CubeMX2project.tpl') #emacs
+    #Makefile
     try:
         with open(template_file_path, 'rb') as f:
             makefile_template = string.Template(f.read())
     except EnvironmentError as e:
         sys.stderr.write("Unable to read template file: {}. Error: {}".format(template_file_path, str(e)))
+        sys.exit(C2M_ERR_LOAD_TEMPLATE)
+    #emacs
+    try:
+        with open(projtempl_file_path, 'rb') as f:
+            project_template = string.Template(f.read())
+    except EnvironmentError as e:
+        sys.stderr.write("Unable to read template file: {}. Error: {}".format(projtempl_file_path, str(e)))
         sys.exit(C2M_ERR_LOAD_TEMPLATE)
 
     proj_folder_path = os.path.abspath(sys.argv[1])
@@ -58,12 +66,11 @@ def main():
         sys.exit(C2M_ERR_INVALID_COMMANDLINE)
 
     proj_name = os.path.splitext(os.path.basename(proj_folder_path))[0]
-    ac6_project_path = os.path.join(proj_folder_path,'.project')
-    ac6_cproject_path = os.path.join(proj_folder_path,'.cproject')
+    ac6_project_path = os.path.join(proj_folder_path, '.project')
+    ac6_cproject_path = os.path.join(proj_folder_path, '.cproject')
     if not (os.path.isfile(ac6_project_path) and os.path.isfile(ac6_cproject_path)):
         sys.stderr.write("SW4STM32 project not found, use STM32CubeMX to generate a SW4STM32 project first\n")
         sys.exit(C2M_ERR_NO_PROJECT)
-
 
     ctx = []
 
@@ -74,6 +81,7 @@ def main():
     c_set['inc_subst'] = 'C_INCLUDES ='
     c_set['first'] = True
     c_set['relpath_stored'] = ''
+    c_set['incs'] = list() #emacs
     ctx.append(c_set)
 
     asm_set = {}
@@ -83,6 +91,7 @@ def main():
     asm_set['inc_subst'] = 'AS_INCLUDES ='
     asm_set['first'] = True
     asm_set['relpath_stored'] = ''
+    c_set['incs'] = list() #emacs
     ctx.append(asm_set)
 
     for path, dirs, files in os.walk(proj_folder_path):
@@ -126,9 +135,10 @@ def main():
                             #Last token does not have a trailing slash
                             if path_tok == relpath_split[0]:
                                 s['inc_subst'] += path_tok
+                                s['incs'].append("/" + path_tok) #emacs
                             else:
-                                s['inc_subst'] += '/' + path_tok         
-                    
+                                s['inc_subst'] += '/' + path_tok
+                                s['incs'][-1] += '/' + path_tok  #emacs
     # .cproject file
     try:
         tree = xml.etree.ElementTree.parse(ac6_cproject_path)
@@ -196,7 +206,25 @@ def main():
         sys.exit(C2M_ERR_IO)
 
     sys.stdout.write("Makefile created: {}\n".format(makefile_path))
-    
+
+    #emacs
+    proj_includes = ""
+    for i in c_set['incs']:
+        proj_includes += '"' + i + '"\n                                      '
+
+    project_path = os.path.join(proj_folder_path, 'project.el')
+    project_str = project_template.substitute(
+        PRJ = proj_name,
+        INCLUDES = proj_includes,
+        PTH = project_path)
+    try:
+        with open(project_path, 'wb') as f:
+            f.write(project_str)
+    except EnvironmentError as e:
+        sys.stderr.write("Unable to write project.el: {}. Error: {}\n".format(project_path, str(e)))
+        sys.exit(C2M_ERR_IO)
+    sys.stdout.write("project_path created: {}\n".format(project_path))
+
     sys.exit(C2M_ERR_SUCCESS)
 
 
