@@ -97,8 +97,8 @@ def main():
     for path, dirs, files in os.walk(proj_folder_path):
         for file in files:
             for s in ctx:
-
-                if file.endswith(s['source_endswith']):
+                
+                if file.endswith(s['source_endswith']) or file.endswith(s['source_endswith'].upper()):
                     s['source_subst'] += ' \\\n  '
                     relpath = os.path.relpath(path,proj_folder_path)
 
