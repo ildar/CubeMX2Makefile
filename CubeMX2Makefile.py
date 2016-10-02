@@ -97,8 +97,8 @@ def main():
     for path, dirs, files in os.walk(proj_folder_path):
         for file in files:
             for s in ctx:
-                
-                if file.endswith(s['source_endswith']) or file.endswith(s['source_endswith'].upper()):
+
+                if file.endswith(s['source_endswith']):
                     s['source_subst'] += ' \\\n  '
                     relpath = os.path.relpath(path,proj_folder_path)
 
@@ -169,11 +169,27 @@ def main():
 
     # C symbols
     c_defs_subst = 'C_DEFS ='
+    c_defs_project = ""
     c_def_node_list = root.findall('.//tool/option[@valueType="definedSymbols"]/listOptionValue')
     for c_def_node in c_def_node_list:
         c_def_str = c_def_node.attrib.get('value')
         if c_def_str:
             c_defs_subst += ' -D{}'.format(c_def_str)
+
+            def1 = ""
+            def2 = ""
+            if '=' in c_def_str:
+                def1 = "\"" + c_def_str.split('=')[0] + "\""
+                def2 = c_def_str.split('=')[1]
+            else:
+                def1 = "\"" + c_def_str + "\""
+                def2 = "\"\""
+                
+            c_defs_project += ("				    " if len(c_defs_project) else "")
+            c_defs_project += "(" + def1 + " . "
+            c_defs_project += def2 + ")\n"
+    c_defs_project = c_defs_project[0:-1]
+
 
     # Link script
     ld_script_node_list = root.find('.//tool/option[@superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script"]')
@@ -216,7 +232,8 @@ def main():
     project_str = project_template.substitute(
         PRJ = proj_name,
         INCLUDES = proj_includes,
-        PTH = project_path)
+        PTH = project_path,
+        C_DEFS = c_defs_project)
     try:
         with open(project_path, 'wb') as f:
             f.write(project_str)
