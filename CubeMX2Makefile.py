@@ -98,7 +98,7 @@ def main():
         for file in files:
             for s in ctx:
 
-                if file.endswith(s['source_endswith']):
+                if file.endswith(s['source_endswith']) and not file.startswith('.'):
                     s['source_subst'] += ' \\\n  '
                     relpath = os.path.relpath(path,proj_folder_path)
 
@@ -113,7 +113,7 @@ def main():
                             s['source_subst'] += '/' + path_tok
                     s['source_subst'] += '/' + file
 
-                if file.endswith(s['inc_endswith']):
+                if file.endswith(s['inc_endswith']) and not file.startswith('.'):
                     relpath = os.path.relpath(path,proj_folder_path)
 
                     #only include a path once
@@ -174,16 +174,16 @@ def main():
     for c_def_node in c_def_node_list:
         c_def_str = c_def_node.attrib.get('value')
         if c_def_str:
-            c_defs_subst += ' -D{}'.format(c_def_str)
-
             def1 = ""
             def2 = ""
             if '=' in c_def_str:
                 def1 = "\"" + c_def_str.split('=')[0] + "\""
-                def2 = c_def_str.split('=')[1]
+                def2 = "\"" + c_def_str.split('=')[1] + "\""
+                c_defs_subst += ' -D' + c_def_str.split('=')[0] + '=' + def2
             else:
                 def1 = "\"" + c_def_str + "\""
                 def2 = "\"\""
+                c_defs_subst += ' -D' + c_def_str
                 
             c_defs_project += ("				    " if len(c_defs_project) else "")
             c_defs_project += "(" + def1 + " . "
